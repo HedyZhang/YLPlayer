@@ -423,7 +423,7 @@ static const CGFloat kVideoControlBarAutoFadeOutTimeInterval = 5.0;
 - (UIButton *)backButton {
     if (!_backButton) {
         _backButton = [[UIButton alloc] initWithFrame:CGRectZero];
-        [_backButton setBackgroundImage:[UIImage imageNamed:@"player_back"] forState:UIControlStateNormal];
+        [_backButton setImage:[UIImage imageNamed:@"player_close"] forState:UIControlStateNormal];
     }
     return _backButton;
 }

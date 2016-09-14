@@ -10,7 +10,6 @@
 #import "Masonry.h"
 
 #import "YLVideoPlayerTimeIndicatorView.h"
-#import "YLVideoPlayerBrightnessView.h"
 #import "YLPlayerSlider.h"
 
 #define kGQPlayerControlViewHideNotification @"GQPlayerControlViewHideNotification"

@@ -95,8 +95,8 @@
     self.isPauseByUser = YES;
     self.shouldAutoOrientation = YES;
     self.playbackState = YLMoviePlaybackStateStart;
+    self.videoControl.playOrPauseBtn.selected = NO;
     self.videoControl.playOrPauseBtn.enabled = NO;
-    self.videoControl.playOrPauseBtn.selected = YES;
 }
 
 - (void)configConstrints {
@@ -185,7 +185,7 @@
     if (self.isPlaying || !self.isPauseByUser) {
         return;
     }
-    self.videoControl.playOrPauseBtn.selected = NO;
+    self.videoControl.playOrPauseBtn.selected = YES;
     [self.player play];
     self.isPlaying = YES;
 }
@@ -193,7 +193,7 @@
     if (!self.isPlaying) {
         return;
     }
-    self.videoControl.playOrPauseBtn.selected = YES;
+    self.videoControl.playOrPauseBtn.selected = NO;
     [self.player pause];
     self.isPlaying = NO;
     [self.currentItem.asset cancelLoading];
@@ -259,7 +259,6 @@
     [self.videoControl.playOrPauseBtn addTarget:self action:@selector(playOrPause:) forControlEvents:UIControlEventTouchUpInside];
     [self.videoControl.fullScreenBtn addTarget:self action:@selector(fullScreenAction:) forControlEvents:UIControlEventTouchUpInside];
     [self.videoControl.backButton addTarget:self action:@selector(closeTheVideo:) forControlEvents:UIControlEventTouchUpInside];
-    
     self.videoControl.progressSlider.delegate = self;
 }
 
@@ -273,8 +272,6 @@
 
 - (void)playOrPause:(UIButton *)sender {
     [self.videoControl cancelAutoFadeOutControlBar];
-    self.videoControl.playOrPauseBtn.selected = !sender.selected;
-    self.isPauseByUser = !sender.selected;
     if (self.player.rate != 1.f && !self.videoControl.playOrPauseBtn.selected) {
         if ([self currentTime] == [self duration]) {
             [self setCurrentTime:0.f];
@@ -298,8 +295,12 @@
 }
 
 -(void)closeTheVideo:(UIButton *)sender {
-    [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait animated:NO];
-    [[NSNotificationCenter defaultCenter] postNotificationName:kCloseMediaNotification object:nil];
+    if (self.isFullscreen) {
+        [self toOrientation:UIInterfaceOrientationPortrait];
+        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait animated:YES];
+    } else {
+       [[NSNotificationCenter defaultCenter] postNotificationName:kCloseMediaNotification object:nil];
+    }
 }
 
 - (void)sliderValueChangeDidBegin:(YLPlayerSlider *)slider {
@@ -418,6 +419,7 @@
             if (CMTimeGetSeconds(self.player.currentItem.duration)) {
                 self.videoControl.progressSlider.progressSlider.maximumValue = CMTimeGetSeconds(self.player.currentItem.duration);
             }
+            self.videoControl.playOrPauseBtn.selected = YES;
             self.videoControl.playOrPauseBtn.enabled = YES;
             self.playbackState = YLMoviePlaybackStatePlaying;
             [self.videoControl addGesture];
@@ -449,12 +451,13 @@
         // 当缓冲是空的时候
         if (self.currentItem.playbackBufferEmpty) {
             self.playbackState = YLMoviePlaybackStateBuffering;
-            [self bufferingSomeSecond];
+            [self pause];
         }
         
     } else if ([keyPath isEqualToString:@"playbackLikelyToKeepUp"]) {
         // 当缓冲好的时候
         if (self.currentItem.playbackLikelyToKeepUp && self.playbackState == YLMoviePlaybackStateBuffering){
+            [self play];
             self.playbackState = YLMoviePlaybackStatePlaying;
         }
     }
@@ -469,34 +472,6 @@
     float durationSeconds     = CMTimeGetSeconds(timeRange.duration);
     NSTimeInterval result     = startSeconds + durationSeconds;// 计算缓冲总进度
     return result;
-}
-
-#pragma mark - 缓冲较差时候
-
-/**
- *  缓冲较差时候回调这里
- */
-- (void)bufferingSomeSecond {
-    self.playbackState = YLMoviePlaybackStateBuffering;
-    // playbackBufferEmpty会反复进入，因此在bufferingOneSecond延时播放执行完之前再调用bufferingSomeSecond都忽略
-    __block BOOL isBuffering = NO;
-    if (isBuffering) return;
-    isBuffering = YES;
-    // 需要先暂停一小会之后再播放，否则网络状况不好的时候时间在走，声音播放不出来
-//    [self pause];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        // 如果此时用户已经暂停了，则不再需要开启播放了
-        if (self.isPauseByUser) {
-            isBuffering = NO;
-            return;
-        }
-//        [self play];
-        // 如果执行了play还是没有播放则说明还没有缓存好，则再次缓存一段时间
-        isBuffering = NO;
-        if (!self.currentItem.isPlaybackLikelyToKeepUp) {
-            [self bufferingSomeSecond];
-        }
-    });
 }
 
 #pragma mark - Update Duration
@@ -617,7 +592,6 @@
                     self.panDirection = YLPanDirectionHorizontal;
                     self.sumTime = [self currentTime];
                     [self pause];
-                    self.videoControl.playOrPauseBtn.selected = YES;
                     [self stopDurationTimer];
 
                 }
@@ -658,7 +632,6 @@
                 case YLPanDirectionHorizontal: {
                     [self setCurrentTime:self.sumTime];
                     [self play];
-                    self.videoControl.playOrPauseBtn.selected = NO;
                     [self startDurationTimer];
                 }
                     break;
@@ -725,6 +698,11 @@
 // pan垂直移动
 - (void)verticalMoved:(CGFloat)value {
     if (self.isVolumeAdjust) {
+        // 调节系统音量
+        self.currentVolume -= value / kPanVerticalControlScaleFactor;
+        [self updateSystemVolume];
+    }else {
+        // 亮度
         if (!_lightView) {
             [self.myWindow addSubview:self.lightView];
             [self.lightView mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -732,11 +710,7 @@
                 make.size.mas_equalTo(CGSizeMake(155, 155));
             }];
         }
-        // 调节系统音量
-        self.currentVolume -= value / kPanVerticalControlScaleFactor;
-        [self updateSystemVolume];
-    }else {
-        // 亮度
+
         [self.myWindow bringSubviewToFront:self.lightView];
         [UIScreen mainScreen].brightness -= value / kPanVerticalControlScaleFactor;
         [self.lightView changeLightViewWithValue:[UIScreen mainScreen].brightness];
@@ -801,12 +775,14 @@
     self.isFullscreen = NO;
      [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleDefault];
     [self.videoControl.fullScreenBtn setImage:[UIImage imageNamed:@"player_fullscreen"] forState:UIControlStateNormal];
+    [self.videoControl.backButton setImage:[UIImage imageNamed:@"player_close"] forState:UIControlStateNormal];
      [[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationNone];
 }
 
 - (void)toLandscapeUpdate {
     self.isFullscreen = YES;
     [self.videoControl.fullScreenBtn setImage:[UIImage imageNamed:@"player_shrinkscreen"] forState:UIControlStateNormal];
+    [self.videoControl.backButton setImage:[UIImage imageNamed:@"player_fullscreen_back"] forState:UIControlStateNormal];
     [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
      UIInterfaceOrientation currentOrientation = [UIApplication sharedApplication].statusBarOrientation;
     if (!self.videoControl.isBarShowing && (currentOrientation == UIInterfaceOrientationLandscapeLeft || currentOrientation == UIInterfaceOrientationLandscapeRight)) {

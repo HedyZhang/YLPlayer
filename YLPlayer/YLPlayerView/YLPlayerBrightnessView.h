@@ -14,4 +14,5 @@
 
 - (void)dismissLightViewAnimation:(void (^)(BOOL finished))completion;
 
+
 @end

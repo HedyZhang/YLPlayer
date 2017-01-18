@@ -498,6 +498,12 @@
     }
 }
 
+
+/**
+ 获取当前item的duration
+
+ @return PlayerItem的duration
+ */
 - (double)duration {
     AVPlayerItem *playerItem = self.player.currentItem;
     if (playerItem.status == AVPlayerItemStatusReadyToPlay){
@@ -507,13 +513,15 @@
     }
 }
 
+/**
+ 当前播放时间
+ */
 - (double)currentTime {
     return CMTimeGetSeconds([[self player] currentTime]);
 }
 
 - (void)setCurrentTime:(double)time {
     [self.player seekToTime:CMTimeMakeWithSeconds(time, 1)];
-
 }
 
 - (void)setCurrentTime:(double)time completionHandler:(void (^)(BOOL finished))completionHandler {
@@ -615,12 +623,10 @@
             switch (self.panDirection) {
                 case YLPanDirectionHorizontal: {
                     [self horizontalMoved:veloctyPoint.x];
-                }
-                    break;
+                }break;
                 case YLPanDirectionVertical: {
                     [self verticalMoved:veloctyPoint.y];
-                }
-                    break;
+                }break;
                     
                 default:
                     break;
@@ -633,8 +639,7 @@
                     [self setCurrentTime:self.sumTime];
                     [self play];
                     [self startDurationTimer];
-                }
-                    break;
+                }break;
                 case YLPanDirectionVertical: {
                     if (!self.isVolumeAdjust) {
                         __weak __typeof(self) weakSelf = self;
@@ -643,15 +648,11 @@
                             weakSelf.lightView = nil;
                         }];
                     }
-                }
-                    break;
-                    
+                }break;
                 default:
                     break;
             }
-        }
-            break;
-            
+        }break;
         default:
             break;
     }
@@ -848,9 +849,7 @@
     self.currentItem = nil;
     self.playerLayer = nil;
     [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
-
 }
-
 
 #pragma mark - Getter
 

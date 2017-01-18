@@ -91,6 +91,9 @@ static const CGFloat kVideoControlBarAutoFadeOutTimeInterval = 5.0;
     }];
 }
 
+/**
+ 添加屏幕手势
+ */
 - (void)addGesture {
     if (!self.isHasGesture) {
         //单击
@@ -342,6 +345,7 @@ static const CGFloat kVideoControlBarAutoFadeOutTimeInterval = 5.0;
 
 }
 
+
 - (void)autoFadeOutControlBar {
     if (!self.isBarShowing) {
         return;
@@ -354,7 +358,7 @@ static const CGFloat kVideoControlBarAutoFadeOutTimeInterval = 5.0;
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(animateHide) object:nil];
 }
 
-#pragma mark - getters
+
 #pragma mark - Getter
 
 - (UIView *)topView {
